@@ -26,6 +26,8 @@ int time_delta;
 int delay_time;
 
 int pot_value;
+int btn_1_state;
+int btn_2_state;
 
 int minutes;
 int hours;
@@ -41,6 +43,10 @@ void setup() {
   // setup led
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
+
+  // setup buttons
+  pinMode(BTN_1_PIN, INPUT);
+  pinMode(BTN_2_PIN, INPUT);
 
   // setup lcd
   lcd.init();
@@ -91,12 +97,20 @@ void setup() {
 void loop() {
   lcd.setCursor(0, 0);
   pot_value = analogRead(POT_PIN);
+  btn_1_state = digitalRead(BTN_1_PIN);
+  btn_2_state = digitalRead(BTN_2_PIN);
 
   minutes = pot_value / MINUTES_FRACTION;
   minutes = (minutes == 60 ? minutes - 1: minutes);
 
   hours = pot_value / HOURS_FRACTION;
   hours = (hours == 24 ? hours - 1 : hours);
+
+  if (btn_1_state == HIGH) {
+    Serial.println("btn_1 - HIGH" + String(btn_1_state));
+  } else {
+    Serial.println("btn_1 - LOW" + String(btn_1_state));
+  }
   
   switch (status) {
     case regular:

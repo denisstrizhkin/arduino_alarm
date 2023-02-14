@@ -1,6 +1,8 @@
 #include <LiquidCrystal_I2C.h>
 #include <ThreeWire.h>  
 #include <RtcDS1302.h>
+#include <SoftwareSerial.h>
+#include <DFRobotDFPlayerMini.h>
 
 const int RTC_IO = 4;
 const int RTC_SCLK = 5;
@@ -12,7 +14,7 @@ const int BTN_3_PIN = A2;
 const int BTN_2_PIN = A3;
 const int POT_PIN = A0;
 
-const int DELAY_PERIOD = 1000 / 15;
+const int DELAY_PERIOD = 1000 / 5;
 
 const int MINUTES_FRACTION = 1024 / 60;
 const int HOURS_FRACTION = 1024 / 24;
@@ -21,6 +23,10 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x27 for a 16 char
 
 ThreeWire rtc_wire(RTC_IO, RTC_SCLK, RTC_CE); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(rtc_wire);
+
+SoftwareSerial mySoftwareSerial(10, 11); // RX, TX
+DFRobotDFPlayerMini myDFPlayer;
+void printDetail(uint8_t type, int value);
 
 unsigned long previous_time;
 int time_delta;
@@ -67,7 +73,7 @@ void setup() {
   previous_time = millis();
 
   // rtc setup
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   Serial.print("compiled: ");
   Serial.print(String(__DATE__) + " ");
@@ -102,10 +108,36 @@ void setup() {
   } else if (now == compiled) {
     Serial.println("RTC is the same as compile time! (not expected but all is fine)");
   }
+
+  //dfplayer
+  mySoftwareSerial.begin(9600);
+  
+  Serial.println();
+  Serial.println(F("DFRobot DFPlayer Mini Demo"));
+  Serial.println(F("Initializing DFPlayer ... (May take 3~5 seconds)"));
+  
+  if (!myDFPlayer.begin(mySoftwareSerial)) {  //Use softwareSerial to communicate with mp3.
+    Serial.println(F("Unable to begin:"));
+    Serial.println(F("1.Please recheck the connection!"));
+    Serial.println(F("2.Please insert the SD card!"));
+    while(true){
+      delay(0); // Code to compatible with ESP8266 watch dog.
+    }
+  }
+  Serial.println(F("DFPlayer Mini online."));
+  myDFPlayer.volume(30);
+  delay(2000);
+  myDFPlayer.play(1);
 }
 
 void loop() {
   digitalWrite(LED_PIN, led_value);
+  if (led_value == HIGH) {
+    myDFPlayer.play(1);
+  } else {
+    myDFPlayer.stop();
+  }
+  
   lcd.setCursor(0, 0);
   pot_value = analogRead(POT_PIN);
   btn_1_state = analogRead(BTN_1_PIN);
@@ -212,7 +244,7 @@ void loop() {
   // delay handling
   time_delta = millis() - previous_time;
   delay_time = (time_delta < DELAY_PERIOD ? DELAY_PERIOD - time_delta : 0);
-  delay(delay_time);
+  //delay(delay_time);
   previous_time = millis();
 }
 

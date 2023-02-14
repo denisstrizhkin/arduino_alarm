@@ -12,9 +12,10 @@ const int LED_PIN = 8;
 const int BTN_1_PIN = A1;
 const int BTN_3_PIN = A2;
 const int BTN_2_PIN = A3;
+const int BTN_STOP_PIN = A6;
 const int POT_PIN = A0;
 
-const int DELAY_PERIOD = 1000 / 5;
+const int DELAY_PERIOD = 1000 / 8;
 
 const int MINUTES_FRACTION = 1024 / 60;
 const int HOURS_FRACTION = 1024 / 24;
@@ -37,6 +38,7 @@ int pot_value;
 int btn_1_state;
 int btn_2_state;
 int btn_3_state;
+int btn_stop_state;
 
 bool is_btn_1= false;
 bool is_btn_1_available = true;
@@ -44,6 +46,9 @@ bool is_btn_2 = false;
 bool is_btn_2_available = true;
 bool is_btn_3 = false;
 bool is_btn_3_available = true;
+bool is_btn_stop = false;
+bool is_btn_stop_available = true;
+bool is_alarm = false;
 
 int minutes;
 int hours;
@@ -100,6 +105,8 @@ void setup() {
   }
 
   RtcDateTime now = Rtc.GetDateTime();
+  alarm_hours = now.Hour();
+  alarm_minutes = now.Minute() + 2;
   if (now < compiled) {
     Serial.println("RTC is older than compile time!  (Updating DateTime)");
     Rtc.SetDateTime(compiled);
@@ -126,16 +133,20 @@ void setup() {
   }
   Serial.println(F("DFPlayer Mini online."));
   myDFPlayer.volume(30);
-  delay(2000);
-  myDFPlayer.play(1);
+  myDFPlayer.stop();
+  //delay(2000);
+  //myDFPlayer.play(1);
 }
 
 void loop() {
   digitalWrite(LED_PIN, led_value);
-  if (led_value == HIGH) {
+  if (is_alarm) {
+    Serial.println("playing track");
     myDFPlayer.play(1);
+    myDFPlayer.enableLoopAll();
+    is_alarm = false;
   } else {
-    myDFPlayer.stop();
+    //myDFPlayer.stop();
   }
   
   lcd.setCursor(0, 0);
@@ -143,6 +154,10 @@ void loop() {
   btn_1_state = analogRead(BTN_1_PIN);
   btn_2_state = analogRead(BTN_2_PIN);
   btn_3_state = analogRead(BTN_3_PIN);
+  btn_stop_state = analogRead(BTN_STOP_PIN);
+  Serial.println(btn_stop_state);
+  //Serial.println(alarm_hours);
+  //Serial.println(alarm_minutes);
 
   if (status == set_time || status == alarm) {
     if (set_time_type == minute) {
@@ -163,7 +178,7 @@ void loop() {
     Serial.println("RTC lost confidence in the DateTime!");
   }
 
-  if (btn_1_state == 0) {
+  if (btn_1_state == LOW) {
     if (is_btn_1_available) {
       is_btn_1_available = false;
       Serial.println("btn 1 pressed");
@@ -206,6 +221,18 @@ void loop() {
   } else {
     is_btn_2_available = true;
   }
+
+  if (btn_stop_state == 0) {
+    if (is_btn_stop_available) {
+      is_btn_stop = true;
+      is_btn_stop_available = false;
+      Serial.println("btn stop pressed");
+      led_value = LOW;
+      myDFPlayer.stop();
+    }
+  } else {
+    is_btn_stop_available = true;
+  }
   
   switch (status) {
     case regular:
@@ -221,12 +248,18 @@ void loop() {
 
   if (now.Hour() == alarm_hours && now.Minute() == alarm_minutes) {
     led_value = HIGH;
+    Serial.println("alarm started");
+    is_alarm = true;
+    alarm_hours = -1;
+    alarm_minutes = -1;
   }
   
   lcd.setCursor(0, 1);
-  lcd.print(padTime(now.Hour()));
+  //lcd.print(padTime(now.Hour()));
+  lcd.print(padTime(7));
   lcd.setCursor(3, 1);
-  lcd.print(padTime(now.Minute()));
+  //lcd.print(padTime(now.Minute()));
+  lcd.print(padTime(1));
   lcd.setCursor(6, 1);
   lcd.print(padTime(now.Second()));
 
@@ -244,7 +277,7 @@ void loop() {
   // delay handling
   time_delta = millis() - previous_time;
   delay_time = (time_delta < DELAY_PERIOD ? DELAY_PERIOD - time_delta : 0);
-  //delay(delay_time);
+  delay(delay_time);
   previous_time = millis();
 }
 
